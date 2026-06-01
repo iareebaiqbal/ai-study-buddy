@@ -2,9 +2,8 @@ import gradio as gr
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
-# Free local model - no cloud API needed!
-MODEL_NAME = "google/flan-t5-base"
-
+# Free local model - no cloud API needed!MODEL_NAME = "google/flan-t5-small"
+MODEL_NAME = "google/flan-t5-small"
 print("Loading model... please wait!")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
