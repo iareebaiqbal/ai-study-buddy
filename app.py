@@ -11,21 +11,20 @@ print("Model loaded!")
 
 AGENT_TRACE = []
 
-SYSTEM_PREFIX = "You are a friendly AI Study Buddy. Help students learn by explaining concepts clearly, making quizzes, and creating flashcards. Be encouraging and use simple language.\n\n"
+SYSTEM_PREFIX = "You are a friendly AI Study Buddy. Help students learn clearly.\n\n"
 
 def get_mode_prompt(message, mode):
     if mode == "🧠 Quiz Me":
-        return f"Create 5 multiple choice quiz questions about: {message}. Format: Q1. question a) b) c) d) Answer:"
+        return f"Create 5 multiple choice quiz questions about: {message}."
     elif mode == "🃏 Flashcards":
-        return f"Create 5 study flashcards about: {message}. Format: Flashcard 1 Front: Back:"
+        return f"Create 5 study flashcards about: {message}."
     elif mode == "📖 Explain":
-        return f"Explain this topic in simple easy language with an example: {message}"
-    return f"Answer this study question helpfully: {message}"
+        return f"Explain this topic simply with an example: {message}"
+    return f"Answer this study question: {message}"
 
 def chat(message, history, mode):
     AGENT_TRACE.append(f"[INPUT] Mode: {mode} | Message: {message}")
     prompt = SYSTEM_PREFIX + get_mode_prompt(message, mode)
-    AGENT_TRACE.append(f"[PROMPT] {prompt[:100]}...")
     inputs = tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True)
     with torch.no_grad():
         outputs = model.generate(
@@ -61,9 +60,10 @@ with gr.Blocks(title="AI Study Buddy", theme=gr.themes.Soft()) as demo:
     with gr.Tabs():
         with gr.Tab("💬 Chat"):
             chatbot = gr.Chatbot(
-                value=[[None, "Hi there! 🌸 I'm your AI Study Buddy! What shall we learn today? ✨"]],
+                value=[{"role": "assistant", "content": "Hi there! 🌸 I'm your AI Study Buddy! What shall we learn today? ✨"}],
                 height=450,
                 label="AI Study Buddy",
+                type="messages",
             )
             with gr.Row():
                 txt = gr.Textbox(placeholder="Ask me anything... 🌸", label="", scale=5)
@@ -86,12 +86,13 @@ with gr.Blocks(title="AI Study Buddy", theme=gr.themes.Soft()) as demo:
         if not message.strip():
             return history, ""
         reply = chat(message, history, mode_val)
-        history.append((message, reply))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": reply})
         return history, ""
 
     def clear():
         AGENT_TRACE.clear()
-        return [[None, "Chat cleared! 🌸 What would you like to study next?"]], ""
+        return [{"role": "assistant", "content": "Chat cleared! 🌸 What would you like to study next?"}], ""
 
     send_btn.click(respond, [txt, chatbot, mode], [chatbot, txt])
     txt.submit(respond, [txt, chatbot, mode], [chatbot, txt])
@@ -101,4 +102,4 @@ with gr.Blocks(title="AI Study Buddy", theme=gr.themes.Soft()) as demo:
 
 demo.launch()
 
-    
+
