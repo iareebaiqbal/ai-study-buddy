@@ -2,7 +2,7 @@ import gradio as gr
 import google.generativeai as genai
 
 # -----------------------
-# CONFIG
+# API SETUP
 # -----------------------
 API_KEY = "YOUR_GOOGLE_AI_STUDIO_KEY"
 genai.configure(api_key=API_KEY)
@@ -24,58 +24,72 @@ Summarize the notes, create 5 questions, and give study tips:
 
 
 # -----------------------
-# CHAT FUNCTION
+# CHAT FUNCTION (FIXED)
 # -----------------------
-def chat(msg, history):
+def chat(message, history):
     history = history or []
 
-    chat_log = ""
-    for u, b in history:
-        chat_log += f"User: {u}\nBot: {b}\n"
+    context = ""
+    for user, bot in history:
+        context += f"User: {user}\nAssistant: {bot}\n"
 
     prompt = f"""
-Conversation:
-{chat_log}
+You are a helpful study assistant.
 
-User: {msg}
-Bot:
+Conversation:
+{context}
+
+User: {message}
+Assistant:
 """
 
-    res = model.generate_content(prompt)
+    response = model.generate_content(prompt)
 
-    history.append((msg, res.text))
+    history.append((message, response.text))
     return "", history
 
 
 # -----------------------
-# UI
+# UI DESIGN
 # -----------------------
-with gr.Blocks() as app:
+theme = gr.themes.Soft()
 
-    gr.Markdown("# Study Companion")
+with gr.Blocks(theme=theme) as app:
+
+    gr.Markdown("# 📘 Study Companion")
+    gr.Markdown("Notes + Chat assistant")
 
     with gr.Tabs():
 
-        # -------- NOTES --------
+        # ---------------- NOTES TAB ----------------
         with gr.Tab("Notes"):
-            inp = gr.Textbox(lines=10, placeholder="Paste notes here")
-            out = gr.Markdown()
-            btn = gr.Button("Run")
+            notes_input = gr.Textbox(
+                lines=10,
+                placeholder="Paste your study notes here..."
+            )
 
-            btn.click(process_notes, inp, out)
+            btn = gr.Button("Generate", variant="primary")
+            output = gr.Markdown()
 
-        # -------- CHAT --------
+            btn.click(process_notes, notes_input, output)
+
+
+        # ---------------- CHAT TAB ----------------
         with gr.Tab("Chat"):
-            box = gr.Chatbot(height=450)
+            chatbot = gr.Chatbot(height=500)
 
-            msg = gr.Textbox(placeholder="Ask something...")
-            send = gr.Button("Send")
+            msg = gr.Textbox(placeholder="Ask your question...")
+            send = gr.Button("Send", variant="primary")
 
-            msg.submit(chat, [msg, box], [msg, box])
-            send.click(chat, [msg, box], [msg, box])
+            def respond(message, history):
+                return chat(message, history)
+
+            msg.submit(respond, [msg, chatbot], [msg, chatbot])
+            send.click(respond, [msg, chatbot], [msg, chatbot])
 
 
 # -----------------------
-# RUN
+# RUN APP
 # -----------------------
-app.launch()
+if __name__ == "__main__":
+    app.launch()
