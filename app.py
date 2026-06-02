@@ -61,7 +61,7 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="violet")) as demo:
         value=[{"role": "assistant", "content": "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"}],
         height=450,
         show_label=False,
-        type="messages",
+        
     )
 
     with gr.Row():
