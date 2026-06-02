@@ -1,11 +1,9 @@
 import gradio as gr
-import google.generativeai as genai
+from google import genai
 import os
 
 # Gemini API Setup
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """You are a helpful and friendly AI Study Buddy. 
 Your job is to help students learn and understand topics clearly.
@@ -27,53 +25,32 @@ def chat(message, history, mode):
         prompt = f"{SYSTEM_PROMPT}\n\nExplain this topic in simple, clear detail: {message}"
     else:
         prompt = f"{SYSTEM_PROMPT}\n\nAnswer this study question helpfully: {message}"
-    
-    # Build conversation history
-    chat_history = []
+
+    # Build conversation
+    contents = []
     for human, assistant in history:
-        chat_history.append({"role": "user", "parts": [human]})
-        chat_history.append({"role": "model", "parts": [assistant]})
-    
-    chat_session = model.start_chat(history=chat_history)
-    response = chat_session.send_message(prompt)
-    
+        if human:
+            contents.append({"role": "user", "parts": [{"text": human}]})
+        if assistant:
+            contents.append({"role": "model", "parts": [{"text": assistant}]})
+    contents.append({"role": "user", "parts": [{"text": prompt}]})
+
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=contents
+    )
+
     history.append((message, response.text))
     return "", history
 
 def clear_chat():
-    return [], []
+    return [], [[None, "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"]]
 
 # UI
-with gr.Blocks(
-    theme=gr.themes.Soft(
-        primary_hue="violet",
-        secondary_hue="purple",
-    ),
-    css="""
-    .gradio-container {
-        max-width: 800px !important;
-        margin: auto !important;
-    }
-    .chat-title {
-        text-align: center;
-        font-size: 2em;
-        font-weight: bold;
-        padding: 20px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .subtitle {
-        text-align: center;
-        color: #888;
-        margin-bottom: 20px;
-        font-size: 1em;
-    }
-    """
-) as demo:
+with gr.Blocks(theme=gr.themes.Soft(primary_hue="violet")) as demo:
 
-    gr.HTML('<div class="chat-title">📚 AI Study Buddy</div>')
-    gr.HTML('<div class="subtitle">Your personal learning assistant — ask anything!</div>')
+    gr.HTML('<h1 style="text-align:center; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2em; padding: 20px;">📚 AI Study Buddy</h1>')
+    gr.HTML('<p style="text-align:center; color:#888; margin-bottom:20px;">Your personal learning assistant — ask anything!</p>')
 
     with gr.Row():
         mode = gr.Radio(
@@ -85,7 +62,6 @@ with gr.Blocks(
     chatbot = gr.Chatbot(
         value=[[None, "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"]],
         height=450,
-        bubble_full_width=False,
         show_label=False,
     )
 
@@ -98,8 +74,7 @@ with gr.Blocks(
         )
         send_btn = gr.Button("Send ➤", variant="primary", scale=1)
 
-    with gr.Row():
-        clear_btn = gr.Button("🗑️ Clear Chat", variant="secondary")
+    clear_btn = gr.Button("🗑️ Clear Chat", variant="secondary")
 
     gr.Examples(
         examples=[
@@ -112,7 +87,6 @@ with gr.Blocks(
         label="💡 Quick Start",
     )
 
-    # Actions
     send_btn.click(chat, [msg, chatbot, mode], [msg, chatbot])
     msg.submit(chat, [msg, chatbot, mode], [msg, chatbot])
     clear_btn.click(clear_chat, [], [msg, chatbot])
