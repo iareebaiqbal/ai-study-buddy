@@ -1,105 +1,120 @@
 import gradio as gr
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-import torch
+import google.generativeai as genai
+import os
 
-MODEL_NAME = "google/flan-t5-base"
+# Gemini API Setup
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-print("Loading model... please wait!")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME, low_cpu_mem_usage=True)
-print("Model loaded!")
-
-AGENT_TRACE = []
-
-SYSTEM_PREFIX = "You are a friendly AI Study Buddy. Help students learn clearly.\n\n"
-
-def get_mode_prompt(message, mode):
-    if mode == "🧠 Quiz Me":
-        return f"Create 5 multiple choice quiz questions about: {message}."
-    elif mode == "🃏 Flashcards":
-        return f"Create 5 study flashcards about: {message}."
-    elif mode == "📖 Explain":
-        return f"Explain this topic simply with an example: {message}"
-    return f"Answer this study question: {message}"
+SYSTEM_PROMPT = """You are a helpful and friendly AI Study Buddy. 
+Your job is to help students learn and understand topics clearly.
+- Give accurate, detailed explanations
+- Use simple language that students can understand
+- When making quizzes, provide 4 options (A, B, C, D) with the correct answer at the end
+- When making flashcards, format them clearly as Question and Answer pairs
+- Always be encouraging and supportive"""
 
 def chat(message, history, mode):
-    AGENT_TRACE.append(f"[INPUT] Mode: {mode} | Message: {message}")
-    prompt = SYSTEM_PREFIX + get_mode_prompt(message, mode)
-    inputs = tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True)
-    with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=200,
-            temperature=0.7,
-            do_sample=True,
-            top_p=0.9,
-            repetition_penalty=1.2,
+    if not message.strip():
+        return "", history
+    
+    if mode == "🧠 Quiz Me":
+        prompt = f"{SYSTEM_PROMPT}\n\nCreate a 5-question multiple choice quiz about: {message}"
+    elif mode == "🃏 Flashcards":
+        prompt = f"{SYSTEM_PROMPT}\n\nCreate 5 flashcards (Q&A format) about: {message}"
+    elif mode == "📖 Explain":
+        prompt = f"{SYSTEM_PROMPT}\n\nExplain this topic in simple, clear detail: {message}"
+    else:
+        prompt = f"{SYSTEM_PROMPT}\n\nAnswer this study question helpfully: {message}"
+    
+    # Build conversation history
+    chat_history = []
+    for human, assistant in history:
+        chat_history.append({"role": "user", "parts": [human]})
+        chat_history.append({"role": "model", "parts": [assistant]})
+    
+    chat_session = model.start_chat(history=chat_history)
+    response = chat_session.send_message(prompt)
+    
+    history.append((message, response.text))
+    return "", history
+
+def clear_chat():
+    return [], []
+
+# UI
+with gr.Blocks(
+    theme=gr.themes.Soft(
+        primary_hue="violet",
+        secondary_hue="purple",
+    ),
+    css="""
+    .gradio-container {
+        max-width: 800px !important;
+        margin: auto !important;
+    }
+    .chat-title {
+        text-align: center;
+        font-size: 2em;
+        font-weight: bold;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+        text-align: center;
+        color: #888;
+        margin-bottom: 20px;
+        font-size: 1em;
+    }
+    """
+) as demo:
+
+    gr.HTML('<div class="chat-title">📚 AI Study Buddy</div>')
+    gr.HTML('<div class="subtitle">Your personal learning assistant — ask anything!</div>')
+
+    with gr.Row():
+        mode = gr.Radio(
+            choices=["💬 Ask Anything", "🧠 Quiz Me", "🃏 Flashcards", "📖 Explain"],
+            value="💬 Ask Anything",
+            label="Choose Mode",
         )
-    reply = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    AGENT_TRACE.append(f"[RESPONSE] {len(reply)} characters generated")
-    return reply
 
-def get_trace():
-    if not AGENT_TRACE:
-        return "No trace yet — ask a question first!"
-    return "\n\n".join(AGENT_TRACE)
-
-with gr.Blocks(title="AI Study Buddy", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("""
-    # 📚 AI Study Buddy
-    ### *your cozy corner for learning ✨*
-    > 🏆 **Gradio Build-Small Hackathon 2026** — by **Areeba Iqbal**
-    """)
-
-    mode = gr.Radio(
-        choices=["💬 Ask Anything", "🧠 Quiz Me", "🃏 Flashcards", "📖 Explain"],
-        value="💬 Ask Anything",
-        label="🎯 Choose Mode",
+    chatbot = gr.Chatbot(
+        value=[[None, "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"]],
+        height=450,
+        bubble_full_width=False,
+        show_label=False,
     )
 
-    with gr.Tabs():
-        with gr.Tab("💬 Chat"):
-            chatbot = gr.Chatbot(
-                value=[{"role": "assistant", "content": "Hi there! 🌸 I'm your AI Study Buddy! What shall we learn today? ✨"}],
-                height=450,
-                label="AI Study Buddy",
-        
-            )
-            with gr.Row():
-                txt = gr.Textbox(placeholder="Ask me anything... 🌸", label="", scale=5)
-                send_btn = gr.Button("➤ Send", scale=1, variant="primary")
-                clear_btn = gr.Button("🗑️ Clear", scale=1)
+    with gr.Row():
+        msg = gr.Textbox(
+            placeholder="Ask me anything...",
+            show_label=False,
+            scale=4,
+            container=False,
+        )
+        send_btn = gr.Button("Send ➤", variant="primary", scale=1)
 
-            gr.Examples(
-                examples=["Explain photosynthesis", "Quiz me on World War 2", "Flashcards for Newton's Laws"],
-                inputs=txt,
-                label="💡 Quick Start",
-            )
+    with gr.Row():
+        clear_btn = gr.Button("🗑️ Clear Chat", variant="secondary")
 
-        with gr.Tab("🔍 Agent Trace"):
-            gr.Markdown("### See how AI Study Buddy thinks!")
-            trace_box = gr.Textbox(label="Agent Trace Log", lines=15, interactive=False)
-            refresh_btn = gr.Button("🔄 Refresh Trace", variant="secondary")
-            refresh_btn.click(fn=get_trace, outputs=trace_box)
+    gr.Examples(
+        examples=[
+            ["Explain photosynthesis"],
+            ["Quiz me on World War 2"],
+            ["Make flashcards for the water cycle"],
+            ["What is the Pythagorean theorem?"],
+        ],
+        inputs=msg,
+        label="💡 Quick Start",
+    )
 
-    def respond(message, history, mode_val):
-        if not message.strip():
-            return history, ""
-        reply = chat(message, history, mode_val)
-        history.append({"role": "user", "content": message})
-        history.append({"role": "assistant", "content": reply})
-        return history, ""
-
-    def clear():
-        AGENT_TRACE.clear()
-        return [{"role": "assistant", "content": "Chat cleared! 🌸 What would you like to study next?"}], ""
-
-    send_btn.click(respond, [txt, chatbot, mode], [chatbot, txt])
-    txt.submit(respond, [txt, chatbot, mode], [chatbot, txt])
-    clear_btn.click(clear, outputs=[chatbot, txt])
-
-    gr.Markdown("---\nMade with 🌸 by **Areeba Iqbal** · AI Study Buddy · Gradio Build-Small Hackathon 2026")
+    # Actions
+    send_btn.click(chat, [msg, chatbot, mode], [msg, chatbot])
+    msg.submit(chat, [msg, chatbot, mode], [msg, chatbot])
+    clear_btn.click(clear_chat, [], [msg, chatbot])
 
 demo.launch()
-
-
