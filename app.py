@@ -1,67 +1,43 @@
+
 import gradio as gr
-import anthropic
-import os
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+def study_buddy(text):
+    if not text.strip():
+        return "Please enter some study material."
 
-# Initialize Anthropic client
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    words = text.split()
 
-def study_buddy_chat(message, chat_history):
-    """
-    Main chat function for AI Study Buddy.
-    Takes user message and returns AI response with study assistance.
-    """
-    
-    # Build conversation history for context
-    messages = []
-    for user_msg, assistant_msg in chat_history:
-        messages.append({"role": "user", "content": user_msg})
-        if assistant_msg:
-            messages.append({"role": "assistant", "content": assistant_msg})
-    
-    # Add current message
-    messages.append({"role": "user", "content": message})
-    
-    try:
-        # Call Claude API
-        response = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=1024,
-            system="""You are an AI Study Buddy - a helpful educational assistant designed to help learners understand concepts, 
-solve problems, and improve their learning. 
+    summary = " ".join(words[:100])
 
-Your responsibilities:
-1. Explain complex concepts in simple, clear language
-2. Provide study tips and learning strategies
-3. Help break down problems into manageable steps
-4. Ask clarifying questions to check understanding
-5. Encourage critical thinking rather than just giving answers
-6. Provide examples and analogies to help with understanding
-7. Be patient, supportive, and motivating
+    quiz = f"""
+1. What is the main topic of the text?
+2. Mention two important points from the text.
+3. Explain the concept in your own words.
+"""
 
-Always adapt your explanation style to the learner's level and be encouraging!""",
-            messages=messages
-        )
-        
-        return response.content[0].text
-    
-    except Exception as e:
-        return f"Error: {str(e)}"
+    tips = """
+📚 Study Tips:
+- Revise after reading.
+- Create short notes.
+- Practice active recall.
+- Take short breaks while studying.
+"""
 
-def create_interface():
-    """Create and configure the Gradio interface"""
-    
-    with gr.Blocks(title="AI Study Buddy", theme=gr.themes.Soft()) as demo:
-        gr.Markdown("""
-        # 🎓 AI Study Buddy
-        Your personal AI-powered learning companion
-        
-        Ask me anything about your studies - I'm here to help you learn and grow!
-        """)
-        
+    return f"### Summary\n{summary}\n\n### Quiz\n{quiz}\n\n### Study Tips\n{tips}"
+
+demo = gr.Interface(
+    fn=study_buddy,
+    inputs=gr.Textbox(
+        lines=10,
+        placeholder="Paste your study notes here..."
+    ),
+    outputs="markdown",
+    title="AI Study Buddy",
+    description="Summarize notes, generate quiz questions and get study tips."
+)
+
+if __name__ == "__main__":
+    demo.launch()
         chatbot = gr.Chatbot(
             label="Study Chat",
             type="messages",
