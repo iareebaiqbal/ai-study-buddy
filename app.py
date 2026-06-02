@@ -2,7 +2,7 @@ import gradio as gr
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
-MODEL_NAME = "google/flan-t5-small"
+MODEL_NAME = "google/flan-t5-base"
 
 print("Loading model... please wait!")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
