@@ -63,7 +63,7 @@ with gr.Blocks(title="AI Study Buddy", theme=gr.themes.Soft()) as demo:
                 value=[{"role": "assistant", "content": "Hi there! 🌸 I'm your AI Study Buddy! What shall we learn today? ✨"}],
                 height=450,
                 label="AI Study Buddy",
-                type="messages",
+        
             )
             with gr.Row():
                 txt = gr.Textbox(placeholder="Ask me anything... 🌸", label="", scale=5)
