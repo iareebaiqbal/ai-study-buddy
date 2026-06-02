@@ -1,4 +1,2 @@
-sdk: gradio
-sdk_version: 6.15.2
-python_version: "3.11"
+gradio
 google-generativeai
