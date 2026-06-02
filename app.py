@@ -1,103 +1,114 @@
 import gradio as gr
-import google.generativeai as genai
+import os
+import requests
 
-# ---------------- API ----------------
-genai.configure(api_key="YOUR_GOOGLE_AI_STUDIO_KEY")
-model = genai.GenerativeModel("gemini-1.5-flash")
+# =========================
+# 🔥 BACKEND FUNCTION
+# =========================
+
+def get_response(message, history):
+
+    # 🔑 Try API first (if available)
+    api_key = os.getenv("API_KEY")
+
+    if api_key:
+        try:
+            url = "https://api.openai.com/v1/chat/completions"
+
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful study assistant."},
+                    {"role": "user", "content": message}
+                ]
+            }
+
+            response = requests.post(url, headers=headers, json=data)
+            result = response.json()
+
+            return result["choices"][0]["message"]["content"]
+
+        except Exception as e:
+            return f"⚠ API Error: {str(e)}"
+
+    # 🧠 Fallback (NO API)
+    return fallback_bot(message)
 
 
-# ---------------- NOTES ----------------
-def process_notes(text):
-    if not text or text.strip() == "":
-        return "Please enter notes first."
+# =========================
+# 🧠 FALLBACK BOT (NO API)
+# =========================
 
-    prompt = f"""
-Summarize these notes, create 5 questions, and study tips:
+def fallback_bot(message):
+    msg = message.lower()
 
-{text}
+    if "hello" in msg:
+        return "Hello! 👋 I am your AI Study Buddy. How can I help?"
+    elif "network" in msg:
+        return "Computer Networks include LAN, WAN, routers, switches, OSI model etc."
+    elif "ip" in msg:
+        return "IP address is a unique identifier for devices on a network."
+    elif "bye" in msg:
+        return "Goodbye! Keep studying 📚"
+    else:
+        return "I am still learning 🤖 — please ask something else."
+
+
+# =========================
+# 🎨 FRONTEND UI
+# =========================
+
+custom_css = """
+body {
+    background: #0f172a;
+    font-family: Arial;
+}
+
+.gradio-container {
+    max-width: 900px !important;
+    margin: auto !important;
+}
+
+/* Chat bubbles */
+.message.user {
+    background-color: #2563eb !important;
+    color: white !important;
+    border-radius: 15px !important;
+}
+
+.message.bot {
+    background-color: #1e293b !important;
+    color: white !important;
+    border-radius: 15px !important;
+}
+
+/* Input box */
+textarea {
+    border-radius: 10px !important;
+}
 """
-    res = model.generate_content(prompt)
-    return res.text
 
 
-# ---------------- CHAT ----------------
-def chat(message, history):
-    history = history or []
+# =========================
+# 🚀 APP LAUNCH
+# =========================
 
-    context = ""
-    for u, b in history:
-        context += f"User: {u}\nAssistant: {b}\n"
+with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as demo:
 
-    prompt = f"""
-You are a helpful tutor.
+    gr.Markdown("""
+    # 📚 AI Study Buddy
+    ### Your smart learning assistant 🚀
+    """)
 
-{context}
-
-User: {message}
-Assistant:
-"""
-
-    res = model.generate_content(prompt)
-
-    history.append((message, res.text))
-    return "", history
-
-
-# ---------------- UI ----------------
-theme = gr.themes.Soft(
-    primary_hue="blue",
-    secondary_hue="indigo",
-    neutral_hue="slate"
-)
-
-with gr.Blocks(theme=theme) as app:
-
-    # 🌈 HEADER (COLORFUL)
-    gr.Markdown(
-        """
-        <div style="text-align:center; padding:10px;">
-            <h1 style="color:#4f46e5;">📘 Study Companion</h1>
-            <p style="color:#6b7280;">Simple Notes • Smart Chat • Fast Learning</p>
-        </div>
-        """,
-        elem_id="header"
+    gr.ChatInterface(
+        fn=get_response,
+        title="Study Assistant",
+        description="Ask me anything about Computer Science or general studies",
     )
 
-    with gr.Tabs():
-
-        # ---------------- NOTES ----------------
-        with gr.Tab("📄 Notes"):
-
-            gr.Markdown("### Paste your notes below 👇")
-
-            inp = gr.Textbox(
-                lines=10,
-                placeholder="Type or paste your notes here..."
-            )
-
-            btn = gr.Button("✨ Generate", variant="primary")
-            out = gr.Markdown()
-
-            btn.click(process_notes, inp, out)
-
-
-        # ---------------- CHAT ----------------
-        with gr.Tab("💬 Chat"):
-
-            gr.Markdown("### Ask anything 👇")
-
-            chatbot = gr.Chatbot(height=500)
-
-            msg = gr.Textbox(
-                placeholder="Type your question...",
-                scale=4
-            )
-
-            send = gr.Button("Send 🚀", variant="primary")
-
-            msg.submit(chat, [msg, chatbot], [msg, chatbot])
-            send.click(chat, [msg, chatbot], [msg, chatbot])
-
-
-# ---------------- RUN ----------------
-app.launch()
+demo.launch()
