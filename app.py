@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-const SYSTEM_PROMPT = `You are an AI Study Buddy — a friendly, warm, and encouraging study assistant. Help students learn better.
+const SYSTEM_PROMPT ='You are an AI Study Buddy' a friendly, warm, and encouraging study assistant. Help students learn better.
 
 You can:
 1. Explain concepts in simple, easy-to-understand language
