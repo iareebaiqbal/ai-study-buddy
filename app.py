@@ -2,7 +2,6 @@ import gradio as gr
 from google import genai
 import os
 
-# Gemini API Setup
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """You are a helpful and friendly AI Study Buddy. 
@@ -26,13 +25,12 @@ def chat(message, history, mode):
     else:
         prompt = f"{SYSTEM_PROMPT}\n\nAnswer this study question helpfully: {message}"
 
-    # Build conversation
     contents = []
-    for human, assistant in history:
-        if human:
-            contents.append({"role": "user", "parts": [{"text": human}]})
-        if assistant:
-            contents.append({"role": "model", "parts": [{"text": assistant}]})
+    for item in history:
+        if item["role"] == "user":
+            contents.append({"role": "user", "parts": [{"text": item["content"]}]})
+        else:
+            contents.append({"role": "model", "parts": [{"text": item["content"]}]})
     contents.append({"role": "user", "parts": [{"text": prompt}]})
 
     response = client.models.generate_content(
@@ -40,13 +38,13 @@ def chat(message, history, mode):
         contents=contents
     )
 
-    history.append((message, response.text))
+    history.append({"role": "user", "content": message})
+    history.append({"role": "assistant", "content": response.text})
     return "", history
 
 def clear_chat():
-    return [], [[None, "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"]]
+    return "", [{"role": "assistant", "content": "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"}]
 
-# UI
 with gr.Blocks(theme=gr.themes.Soft(primary_hue="violet")) as demo:
 
     gr.HTML('<h1 style="text-align:center; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2em; padding: 20px;">📚 AI Study Buddy</h1>')
@@ -60,9 +58,10 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="violet")) as demo:
         )
 
     chatbot = gr.Chatbot(
-        value=[[None, "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"]],
+        value=[{"role": "assistant", "content": "Hi! 👋 I'm your AI Study Buddy. What would you like to learn today? ✨"}],
         height=450,
         show_label=False,
+        type="messages",
     )
 
     with gr.Row():
