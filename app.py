@@ -1,109 +1,81 @@
 import gradio as gr
 import google.generativeai as genai
 
-# -----------------------------
-# CONFIGURE GEMINI
-# -----------------------------
+# -----------------------
+# CONFIG
+# -----------------------
 API_KEY = "YOUR_GOOGLE_AI_STUDIO_KEY"
 genai.configure(api_key=API_KEY)
 
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 
-# -----------------------------
-# 1. NOTES ANALYZER (AI)
-# -----------------------------
-def study_buddy(notes):
+# -----------------------
+# NOTES FUNCTION
+# -----------------------
+def process_notes(text):
     prompt = f"""
-You are an expert study assistant.
+Summarize the notes, create 5 questions, and give study tips:
 
-From the following notes:
-1. Create a short summary
-2. Generate 5 quiz questions
-3. Give study tips
-
-NOTES:
-{notes}
+{text}
 """
+    res = model.generate_content(prompt)
+    return res.text
 
-    response = model.generate_content(prompt)
-    return response.text
 
+# -----------------------
+# CHAT FUNCTION
+# -----------------------
+def chat(msg, history):
+    history = history or []
 
-# -----------------------------
-# 2. CHAT FUNCTION (AI + MEMORY)
-# -----------------------------
-def study_buddy_chat(message, history):
-    history_text = ""
-
-    for user, bot in history:
-        history_text += f"User: {user}\nAI: {bot}\n"
+    chat_log = ""
+    for u, b in history:
+        chat_log += f"User: {u}\nBot: {b}\n"
 
     prompt = f"""
-You are a helpful AI tutor.
+Conversation:
+{chat_log}
 
-Conversation so far:
-{history_text}
-
-User: {message}
-AI:
+User: {msg}
+Bot:
 """
 
-    response = model.generate_content(prompt)
+    res = model.generate_content(prompt)
 
-    history.append((message, response.text))
+    history.append((msg, res.text))
     return "", history
 
 
-# -----------------------------
-# 3. UI (GRADIO ADVANCED)
-# -----------------------------
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
+# -----------------------
+# UI
+# -----------------------
+with gr.Blocks() as app:
 
-    gr.Markdown("# 🎓 AI Study Buddy (Gemini Powered)")
-    gr.Markdown("Next-level AI for summaries, quizzes, and chat 🚀")
+    gr.Markdown("# Study Companion")
 
     with gr.Tabs():
 
-        # ---------------- NOTES TAB ----------------
-        with gr.Tab("📄 Notes Analyzer"):
+        # -------- NOTES --------
+        with gr.Tab("Notes"):
+            inp = gr.Textbox(lines=10, placeholder="Paste notes here")
+            out = gr.Markdown()
+            btn = gr.Button("Run")
 
-            notes_input = gr.Textbox(
-                label="Paste your notes",
-                lines=10,
-                placeholder="Write or paste your study material..."
-            )
+            btn.click(process_notes, inp, out)
 
-            btn = gr.Button("Generate", variant="primary")
-            output = gr.Markdown()
+        # -------- CHAT --------
+        with gr.Tab("Chat"):
+            box = gr.Chatbot(height=450)
 
-            btn.click(study_buddy, inputs=notes_input, outputs=output)
+            msg = gr.Textbox(placeholder="Ask something...")
+            send = gr.Button("Send")
 
-
-        # ---------------- CHAT TAB ----------------
-        with gr.Tab("💬 AI Tutor Chat"):
-
-            chatbot = gr.Chatbot(height=450)
-
-            msg = gr.Textbox(
-                placeholder="Ask your question...",
-                scale=4
-            )
-
-            send = gr.Button("Send", variant="primary")
-
-            def respond(message, history):
-                return study_buddy_chat(message, history)
-
-            msg.submit(respond, [msg, chatbot], [msg, chatbot])
-            send.click(respond, [msg, chatbot], [msg, chatbot])
+            msg.submit(chat, [msg, box], [msg, box])
+            send.click(chat, [msg, box], [msg, box])
 
 
-    gr.Markdown("⚡ Powered by Google Gemini API")
-
-
-# -----------------------------
-# RUN APP
-# -----------------------------
-if __name__ == "__main__":
-    demo.launch()
+# -----------------------
+# RUN
+# -----------------------
+app.launch()
