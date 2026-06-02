@@ -1,95 +1,80 @@
 import gradio as gr
 import google.generativeai as genai
 
-# -----------------------
-# API SETUP
-# -----------------------
-API_KEY = "YOUR_GOOGLE_AI_STUDIO_KEY"
-genai.configure(api_key=API_KEY)
-
+# ---------------- API ----------------
+genai.configure(api_key="YOUR_GOOGLE_AI_STUDIO_KEY")
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 
-# -----------------------
-# NOTES FUNCTION
-# -----------------------
+# ---------------- NOTES ----------------
 def process_notes(text):
+    if not text:
+        return "Please enter notes first."
+
     prompt = f"""
-Summarize the notes, create 5 questions, and give study tips:
+Summarize, give 5 questions and study tips:
 
 {text}
 """
-    res = model.generate_content(prompt)
-    return res.text
+    try:
+        res = model.generate_content(prompt)
+        return res.text
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
-# -----------------------
-# CHAT FUNCTION (FIXED)
-# -----------------------
+# ---------------- CHAT ----------------
 def chat(message, history):
-    history = history or []
+    if history is None:
+        history = []
 
     context = ""
-    for user, bot in history:
-        context += f"User: {user}\nAssistant: {bot}\n"
+    for u, b in history:
+        context += f"User: {u}\nAI: {b}\n"
 
     prompt = f"""
-You are a helpful study assistant.
+You are a study assistant.
 
-Conversation:
 {context}
 
 User: {message}
-Assistant:
+AI:
 """
 
-    response = model.generate_content(prompt)
+    try:
+        res = model.generate_content(prompt)
+        reply = res.text
+    except Exception as e:
+        reply = f"Error: {str(e)}"
 
-    history.append((message, response.text))
+    history.append((message, reply))
     return "", history
 
 
-# -----------------------
-# UI DESIGN
-# -----------------------
-theme = gr.themes.Soft()
+# ---------------- UI ----------------
+with gr.Blocks() as app:
 
-with gr.Blocks(theme=theme) as app:
-
-    gr.Markdown("# 📘 Study Companion")
-    gr.Markdown("Notes + Chat assistant")
+    gr.Markdown("# Study Companion")
 
     with gr.Tabs():
 
-        # ---------------- NOTES TAB ----------------
         with gr.Tab("Notes"):
-            notes_input = gr.Textbox(
-                lines=10,
-                placeholder="Paste your study notes here..."
-            )
+            inp = gr.Textbox(lines=10, placeholder="Paste notes here")
+            btn = gr.Button("Generate")
+            out = gr.Markdown()
 
-            btn = gr.Button("Generate", variant="primary")
-            output = gr.Markdown()
+            btn.click(process_notes, inp, out)
 
-            btn.click(process_notes, notes_input, output)
-
-
-        # ---------------- CHAT TAB ----------------
         with gr.Tab("Chat"):
             chatbot = gr.Chatbot(height=500)
 
-            msg = gr.Textbox(placeholder="Ask your question...")
-            send = gr.Button("Send", variant="primary")
+            msg = gr.Textbox(placeholder="Ask question")
+            send = gr.Button("Send")
 
-            def respond(message, history):
-                return chat(message, history)
-
-            msg.submit(respond, [msg, chatbot], [msg, chatbot])
-            send.click(respond, [msg, chatbot], [msg, chatbot])
+            msg.submit(chat, [msg, chatbot], [msg, chatbot])
+            send.click(chat, [msg, chatbot], [msg, chatbot])
 
 
-# -----------------------
-# RUN APP
-# -----------------------
-if __name__ == "__main__":
-    app.launch()
+app.launch()
+
+    
