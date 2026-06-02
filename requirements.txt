@@ -1,5 +1,2 @@
-transformers
-torch
-sentencepiece
-accelerate
 gradio
+google-generativeai
