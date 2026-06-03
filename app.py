@@ -4,7 +4,7 @@ from huggingface_hub import InferenceClient
 
 =========================
 
-🔥 BACKEND FUNCTION
+//🔥 BACKEND FUNCTION
 
 =========================
 
