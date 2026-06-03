@@ -63,8 +63,7 @@ def fallback_bot(message):
     elif "bye" in msg or "thanks" in msg:
         return "Goodbye! Keep studying hard! You got this! 💪📚"
     else:
-        return "🤔 Interesting question! Try asking about: Python, Networks, OOP, OS, Database, or any CS topic!"
-
+        return "🤔 Interesting question! I can help with any topic — please rephrase your question!"
 
 # =========================
 # 🎨 FRONTEND UI
