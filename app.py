@@ -9,10 +9,9 @@ def get_response(message, history):
         {"role": "system", "content": "You are a helpful study assistant. Answer any question on any topic clearly and in detail."}
     ]
     
-    for human, assistant in history:
-        messages.append({"role": "user", "content": human})
-        messages.append({"role": "assistant", "content": assistant})
-    
+    for item in history:
+        messages.append({"role": "user", "content": item["content"] if isinstance(item, dict) else item[0]})
+        
     messages.append({"role": "user", "content": message})
     
     try:
@@ -26,11 +25,12 @@ def get_response(message, history):
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
 
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
+with gr.Blocks() as demo:
     gr.Markdown("# 📚 AI Study Buddy\n### Your smart learning assistant 🚀")
     gr.ChatInterface(
         fn=get_response,
         description="Ask me anything about any subject!",
+        type="messages"
     )
 
-demo.launch()
+demo.launch(theme=gr.themes.Soft())
