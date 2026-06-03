@@ -1,11 +1,8 @@
 import gradio as gr
+from groq import Groq
 import os
-from huggingface_hub import InferenceClient
 
-client = InferenceClient(
-    model="microsoft/Phi-3.5-mini-instruct",
-    token=os.getenv("API_Key")
-)
+client = Groq(api_key=os.getenv("API_Key"))
 
 def get_response(message, history):
     messages = [
@@ -19,7 +16,8 @@ def get_response(message, history):
     messages.append({"role": "user", "content": message})
     
     try:
-        response = client.chat_completion(
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
             messages=messages,
             max_tokens=1024,
             temperature=0.7
