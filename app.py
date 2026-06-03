@@ -10,8 +10,12 @@ def get_response(message, history):
     ]
     
     for item in history:
-        messages.append({"role": "user", "content": item["content"] if isinstance(item, dict) else item[0]})
-        
+        if isinstance(item, dict):
+            messages.append({"role": item["role"], "content": item["content"]})
+        else:
+            messages.append({"role": "user", "content": item[0]})
+            messages.append({"role": "assistant", "content": item[1]})
+    
     messages.append({"role": "user", "content": message})
     
     try:
@@ -30,7 +34,6 @@ with gr.Blocks() as demo:
     gr.ChatInterface(
         fn=get_response,
         description="Ask me anything about any subject!",
-        type="messages"
     )
 
 demo.launch(theme=gr.themes.Soft())
