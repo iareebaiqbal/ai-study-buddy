@@ -3,7 +3,7 @@ import os
 from huggingface_hub import InferenceClient
 
 client = InferenceClient(
-    model="mistralai/Mistral-7B-Instruct-v0.2",
+    model="Qwen/Qwen2.5-72B-Instruct",
     token=os.getenv("API_Key")
 )
 
