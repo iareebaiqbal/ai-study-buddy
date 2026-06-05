@@ -9,18 +9,45 @@ client = InferenceClient(
 
 def get_response(message, history):
     messages = [
-        {"role": "system", "content": "You are a helpful study assistant. Answer any question on any topic clearly and in detail."}
+        {
+            "role": "system",
+            "content": """
+You are AI Study Buddy, a helpful study assistant created by Areeba.
+
+The user's name is Areeba.
+Address the user as Areeba when appropriate.
+
+If the user asks:
+- Who built you?
+- Who created you?
+- Who made you?
+
+Reply:
+"I am AI Study Buddy, created by Areeba."
+
+Answer any question on any topic clearly, accurately, and in detail.
+Be friendly, professional, and supportive.
+"""
+        }
     ]
-    
+
     for item in history:
         if isinstance(item, dict):
-            messages.append({"role": item["role"], "content": item["content"]})
+            messages.append(
+                {"role": item["role"], "content": item["content"]}
+            )
         else:
-            messages.append({"role": "user", "content": item[0]})
-            messages.append({"role": "assistant", "content": item[1]})
-    
-    messages.append({"role": "user", "content": message})
-    
+            messages.append(
+                {"role": "user", "content": item[0]}
+            )
+            messages.append(
+                {"role": "assistant", "content": item[1]}
+            )
+
+    messages.append(
+        {"role": "user", "content": message}
+    )
+
     try:
         response = client.chat_completion(
             messages=messages,
@@ -28,14 +55,18 @@ def get_response(message, history):
             temperature=0.7
         )
         return response.choices[0].message.content
+
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
 
 with gr.Blocks() as demo:
-    gr.Markdown("# 📚 AI Study Buddy\n### Your smart learning assistant 🚀")
+    gr.Markdown(
+        "# 📚 AI Study Buddy\n### Created by Areeba 🚀"
+    )
+
     gr.ChatInterface(
         fn=get_response,
-        description="Ask me anything about any subject!",
+        description="Ask me anything about any subject!"
     )
 
 demo.launch(theme=gr.themes.Soft())
